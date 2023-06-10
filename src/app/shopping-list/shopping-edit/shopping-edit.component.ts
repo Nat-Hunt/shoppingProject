@@ -1,27 +1,60 @@
-import { Component, OnInit, ViewChild, ElementRef} from '@angular/core';
+import { Component, OnInit, OnDestroy, ViewChild } from '@angular/core';
 import { Ingredient } from 'src/app/shared/ingredient.model';
 import { ShoppingListService } from '../shopping-list.service';
+import { NgForm } from '@angular/forms';
+import { Subscription } from 'rxjs';
 
 @Component({
   selector: 'app-shopping-edit',
   templateUrl: './shopping-edit.component.html',
   styleUrls: ['./shopping-edit.component.css']
 })
-export class ShoppingEditComponent implements OnInit {
-  @ViewChild('nameInput') nameInputRef: ElementRef;
-  @ViewChild('amountInput') amountInputRef: ElementRef;
-  
+export class ShoppingEditComponent implements OnInit, OnDestroy {
+  @ViewChild('f') slForm: NgForm;
+  subsciption: Subscription;
+  editMode = false;
+  edittedItemIndex: number;
+  edittedItem: Ingredient;
+
   constructor(private slService: ShoppingListService){}
 
-  onAddItem(){
-    const ingName = this.nameInputRef.nativeElement.value
-    const ingAmount = this.amountInputRef.nativeElement.value
-    const newIngredient = new Ingredient(ingName, ingAmount)
-    this.slService.addIngredient(newIngredient);
+  onAddItem(form: NgForm){
+    const value = form.value;
+    const newIngredient = new Ingredient(value.name, value.amount)
+    if (this.editMode) {
+      this.slService.updateIngredient(this.edittedItemIndex, newIngredient);
+    } else {
+      this.slService.addIngredient(newIngredient);
+    }
+    this.editMode = false;
+    form.reset();
   }
-  onDeleteItem(){}
-  onClearList(){}
+  
+  onDelete(){
+    this.slService.deleteIngredient(this.edittedItemIndex);
+    this.onClear();
+  }
+  
+  onClear(){
+    this.slForm.reset();
+    this.editMode = false;
+  }
+
   ngOnInit(): void {
-      
+      this.subsciption = this.slService.startedEditing.subscribe(
+        (index: number) => {
+          this.editMode = true;
+          this.edittedItemIndex = index;
+          this.edittedItem = this.slService.getIngredient(index);
+          this.slForm.setValue({
+            name: this.edittedItem.name,
+            amount: this.edittedItem.amount
+          })
+        }
+      );
+  }
+
+  ngOnDestroy(): void {
+      this.subsciption.unsubscribe();
   }
 }
