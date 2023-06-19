@@ -6,6 +6,7 @@ import { Subject } from "rxjs";
 
 import { HttpClient } from "@angular/common/http";
 import { map } from "rxjs/operators";
+import { response } from "express";
 
 @Injectable({
   providedIn: 'root'
@@ -35,7 +36,10 @@ export class RecipeService{
     // ];
     private recipes: Recipe[] = [];
 
-    constructor(private slService: ShoppingListService) {}
+    constructor(
+      private slService: ShoppingListService,
+      private http: HttpClient
+      ) {}
 
     setRecipes(recipes: Recipe[]) {
       this.recipes = recipes;
@@ -43,6 +47,15 @@ export class RecipeService{
     }
   
     getRecipes() {
+      // this.http
+        // .get<Recipe[]>(this.databaseUrl)
+      this.http.get<Recipe[]>('http://localhost:3000/api/recipes')
+        .subscribe(
+          (recipes: Recipe[]) => {
+            this.recipes = recipes;
+            this.recipesChanged.next(this.recipes.slice());
+          }
+        )
       return this.recipes.slice();
     }
   
@@ -55,8 +68,20 @@ export class RecipeService{
     }
   
     addRecipe(recipe: Recipe) {
-      this.recipes.push(recipe);
-      this.recipesChanged.next(this.recipes.slice());
+      // this.http.get<Recipe[]>('http://localhost:3000/api/recipes')
+      //   .subscribe(
+      //     (recipes: Recipe[]) => {
+      //       this.recipes = recipes;
+      //       this.recipesChanged.next(this.recipes.slice());
+      //     }
+      //   )
+
+      this.http
+        .post<{message: string}>('http://localhost:3000/api/recipes', recipe)
+        .subscribe((responseData)=> {
+          this.recipes.push(recipe);
+          this.recipesChanged.next(this.recipes.slice());
+        });
     }
   
     updateRecipe(index: number, newRecipe: Recipe) {
